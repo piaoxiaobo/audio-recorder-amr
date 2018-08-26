@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no"/>
+    <title>AMR 录音测试页</title>
+</head>
+
+<body>
+<h1>漂小泊-录音AMR文件测试页</h1>
+<h2>解码、播放</h2>
+<div id="player-amr">
+    <p>
+        加载演示文件：<button id="amr-load">加载、解码</button>
+        <a href="demo.amr">下载演示文件：demo.amr</a>
+    </p>
+    <p>
+        加载本地文件：<input type="file" id="amr-file" accept=".amr">
+    </p>
+    <p>
+        <button id="amr-play" disabled>播放</button>
+        <span id="amr-duration">0'</span>
+    </p>
+</div>
+<h2>录音、编码</h2>
+<div id="recorder-amr">
+    <p>
+        <button id="amr-record">开始录音</button>
+    </p>
+    <p>
+        <button id="amr-play-record" disabled>播放录音</button>
+        <a href="#" id="amr-down-record"><!--下载录音amr文件--></a>
+        <span id="amr-record-duration">0'</span>
+    </p>
+</div>
+<script src="./BenzAMRRecorder.js"></script>
+<script type="text/javascript" src="jquery-3.1.1.js"></script>
+<!--suppress ES6ModulesDependencies, ES6ConvertVarToLetConst -->
+<script>
+    (function () {
+        function E(selector) {
+            return document.querySelector(selector);
+        }
+
+        /**** 解码、播放 ****/
+
+        var amr;
+
+        var loadDemoBtn = E('#amr-load');
+        var loadAmrFile = E('#amr-file');
+        var playBtn = E('#amr-play');
+        var duration = E('#amr-duration');
+
+        loadDemoBtn.onclick = function() {
+            amr = new BenzAMRRecorder();
+            loadDemoBtn.setAttribute('disabled', true);
+            loadAmrFile.setAttribute('disabled', true);
+            playBtn.setAttribute('disabled', true);
+            amr.initWithUrl('demo.amr').then(function () {
+                loadDemoBtn.removeAttribute('disabled');
+                loadAmrFile.removeAttribute('disabled');
+                playBtn.removeAttribute('disabled');
+                duration.innerHTML = amr.getDuration().toFixed(2) + '\'';
+            });
+        };
+
+        playBtn.onclick = function () {
+            if (amr.isPlaying()) {
+                amr.stop();
+                playBtn.innerHTML = '播放';
+            } else {
+                amr.play();
+                playBtn.innerHTML = '停止';
+                amr.onEnded(function () {
+                    playBtn.innerHTML = '播放';
+                });
+            }
+        };
+
+        loadAmrFile.onchange = function() {
+            amr = new BenzAMRRecorder();
+            loadDemoBtn.setAttribute('disabled', true);
+            loadAmrFile.setAttribute('disabled', true);
+            playBtn.setAttribute('disabled', true);
+            amr.initWithBlob(this.files[0]).then(function () {
+                loadDemoBtn.removeAttribute('disabled');
+                loadAmrFile.removeAttribute('disabled');
+                playBtn.removeAttribute('disabled');
+                duration.innerHTML = amr.getDuration().toFixed(2) + '\'';
+            });
+        };
+
+
+
+
+        /***** 录音、编码 *****/
+
+        var amrForRecorder;
+
+        var recordBtn = E('#amr-record');
+        var playRecordBtn = E('#amr-play-record');
+        var downRecordLink = E('#amr-down-record');
+        var recordDuration = E('#amr-record-duration');
+
+        recordBtn.onclick = function () {
+            if (amrForRecorder && amrForRecorder.isRecording()) {
+                recordBtn.innerHTML = '开始录音';
+                playRecordBtn.removeAttribute('disabled');
+                amrForRecorder.finishRecord().then(() => {
+                    downRecordLink.href = window.URL.createObjectURL(amrForRecorder.getBlob());
+                    downRecordLink.innerHTML = '下载录音amr文件';
+                    recordDuration.innerHTML = amrForRecorder.getDuration().toFixed(2) + '\'';
+                    /*录音时间*/
+                    console.log(amrForRecorder.getBlob());
+                    amrForRecorder.play();
+                    var userid = 23;
+                    //通过blob传送给后台音频文件数据
+                    var blob = amrForRecorder.getBlob(),
+                        form = new FormData(),
+                        request = new XMLHttpRequest();
+                    form.append("file",blob);
+                    form.append("userid",userid);
+                    request.open(
+                        "POST",
+                        "http://localhost:3000/upload",
+                        true
+                    );
+                    request.send(form);
+
+                    //开启可自动下载
+                    // down(blob,'amrfile');
+                    function down(file, fileName) {
+                        let link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(file);
+                        link.download = fileName;
+                        link.click();
+                        window.URL.revokeObjectURL(link.href);
+                        if (navigator.userAgent.indexOf('Firefox') > -1) {
+                            const a = document.createElement('a');
+                            a.addEventListener('click', function (e) {
+                                a.download = fileName;
+                                a.href = URL.createObjectURL(file)
+                            });
+                            let e = document.createEvent('MouseEvents');
+                            e.initEvent('click', false, false);
+                            a.dispatchEvent(e)
+                        }
+                    }
+
+                });
+            } else {
+                recordBtn.innerHTML = '停止录音';
+                playRecordBtn.setAttribute('disabled', true);
+                amrForRecorder = new BenzAMRRecorder();
+                amrForRecorder.initWithRecord().then(() => {
+                    amrForRecorder.startRecord();
+                }).catch(function(e) {
+                    alert(JSON.stringify(e));
+                });
+            }
+        };
+
+        playRecordBtn.onclick = function () {
+            if (amrForRecorder.isPlaying()) {
+                amrForRecorder.stop();
+                playRecordBtn.innerHTML = '播放录音';
+            } else {
+                amrForRecorder.play();
+                playRecordBtn.innerHTML = '停止播放';
+                amrForRecorder.onEnded(function () {
+                    playRecordBtn.innerHTML = '播放录音';
+                });
+            }
+        };
+    })();
+</script>
+</body>
+</html>
