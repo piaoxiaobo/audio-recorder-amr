@@ -1,9 +1,9 @@
 ### audio-recorder-amr
-html5_web录音，试听，下载，上传功能
+html5_web录音，试听，下载，上传功能<br>
 录音音频文件格式：amr
 
 #### 使用插件
-https://github.com/BenzLeung/benz-amr-recorder
+https://github.com/BenzLeung/benz-amr-recorder <br>
 https://www.npmjs.com/package/connect-multiparty
 #### server(服务器)
 node.js构建
